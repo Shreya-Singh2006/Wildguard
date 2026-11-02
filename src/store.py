@@ -28,15 +28,6 @@ _INITIALIZED_DBS = set()
 
 
 def get_db_connection(db_path: Path = SQLITE_DB_PATH) -> sqlite3.Connection:
-<<<<<<< HEAD
-    """Create a SQLite connection, creating the schema on first use so that
-    reads on a fresh clone (no tables yet) return empty results instead of crashing."""
-    key = str(db_path)
-    if key not in _INITIALIZED_DBS:
-        _INITIALIZED_DBS.add(key)  # mark first to avoid recursion via init_database
-        init_database(db_path)
-    conn = sqlite3.connect(key)
-=======
     """Create a SQLite connection, initializing schema on first use so that
     reads on a fresh clone return empty results instead of crashing."""
     db_path = Path(db_path)
@@ -46,18 +37,14 @@ def get_db_connection(db_path: Path = SQLITE_DB_PATH) -> sqlite3.Connection:
         _INITIALIZED_DBS.add(key)  # mark first to prevent recursion
         init_database(db_path)
     conn = sqlite3.connect(str(db_path))
->>>>>>> f75046cbf3cedc3353bdaa2e6d71dbe5d51f4820
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_database(db_path: Path = SQLITE_DB_PATH) -> None:
     """Initialize SQLite database schema for WildGuard."""
-<<<<<<< HEAD
-=======
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
->>>>>>> f75046cbf3cedc3353bdaa2e6d71dbe5d51f4820
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
