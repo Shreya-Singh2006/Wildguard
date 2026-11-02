@@ -73,8 +73,11 @@ if sightings_gdf.empty or screening_gdf.empty:
 # Main Header
 st.title("🛡️ WildGuard: Wildlife & Highway Conflict Screening")
 st.markdown(
-    "**Evidence-based road ecology decision support for Madhya Pradesh (MP), India.** "
-    "Integrating open biodiversity records, robust spatial hotspot statistics, and multi-criteria highway exposure screening."
+    ":green-badge[Live Open Data] :blue-badge[Madhya Pradesh, India] :orange-badge[Kanha-Pench NH-44 Corridor] :violet-badge[Taiwan TaiRON Validation]"
+)
+st.markdown(
+    "**Evidence-based road ecology decision support tool.** "
+    "Connecting open biodiversity occurrence archives, robust spatial outlier hotspot statistics, and multi-criteria highway exposure screening."
 )
 
 # Mandatory Fallback Callout
@@ -145,62 +148,68 @@ with kpi5:
 
 st.markdown("---")
 
-# Quick Navigation Guide
-st.markdown("### 🧭 Dashboard Pages")
+# Quick Navigation Guide with polished cards
+st.markdown("### 🧭 Interactive Modules")
 col_nav1, col_nav2, col_nav3, col_nav4 = st.columns(4)
 
 with col_nav1:
-    st.markdown("#### [🐾 Wildlife Explorer](/Wildlife_Explorer)")
-    st.write(
-        "Explore mammal sightings across Madhya Pradesh. Interactive map with strict separation between precise points and wide blurred grid cells for threatened species."
-    )
+    with st.container(border=True):
+        st.markdown("#### 🐾 [Wildlife Explorer](/Wildlife_Explorer)")
+        st.caption("Interactive map of MP mammal records with strict separation between precise points and 0.25° grid cells for endangered taxa.")
 
 with col_nav2:
-    st.markdown("#### [🎯 Roadkill Validation](/Roadkill_Validation)")
-    st.write(
-        "Validation of the 1 km hotspot outlier detection method on TaiRON roadkill records using temporal holdout, IoU tolerance, and baseline comparisons."
-    )
+    with st.container(border=True):
+        st.markdown("#### 🎯 [Roadkill Validation](/Roadkill_Validation)")
+        st.caption("Statistical validation of 1 km Modified Z-score hotspot detection against density and random baselines with 95% bootstrap CIs.")
 
 with col_nav3:
-    st.markdown("#### [🛣️ Highway Screening](/Highway_Screening)")
-    st.write(
-        "Ranked 1 km highway stretches in the Kanha-Pench ecological corridor. Labeled **'Predicted exposure, not observed roadkill'** with CSV export."
-    )
+    with st.container(border=True):
+        st.markdown("#### 🛣️ [Highway Screening](/Highway_Screening)")
+        st.caption("Multi-criteria survey priority ranking for NH-44 and connecting roads between Kanha and Pench Tiger Reserves with CSV export.")
 
 with col_nav4:
-    st.markdown("#### [🔍 Data Quality & Limits](/Data_Quality)")
-    st.write(
-        "Transparent cleaning funnel, coordinate uncertainty audit, and evidence of safari route and monsoon seasonality biases."
-    )
+    with st.container(border=True):
+        st.markdown("#### 🔍 [Data Quality & Limits](/Data_Quality)")
+        st.caption("Transparent audit of data cleaning attrition, coordinate uncertainty distribution, safari clustering, and monsoon dip bias.")
 
 st.markdown("---")
 
-# Methodology & System Architecture Overview
-st.markdown("### 📐 System Architecture & Methodological Integrity")
-col_arch1, col_arch2 = st.columns([1.2, 1])
+# Methodology & System Architecture Overview in Tabs
+st.markdown("### 📐 Scientific Integrity & System Design")
+tab_method, tab_arch = st.tabs([
+    ":material/menu_book: Scientific Methodology",
+    ":material/memory: System Architecture & Data Pipeline",
+])
 
-with col_arch1:
+with tab_method:
     st.markdown(
         """
-        #### Why WildGuard is Built This Way:
-        1. **Zero Data Fabrication:** Every record is fetched directly from authoritative open APIs (GBIF, OpenStreetMap Overpass, geoBoundaries, IMD).
-        2. **Precautionary Species Privacy:** iNaturalist applies deliberate ~30 km blurring to 7 red-listed species (*Tiger, Leopard, Gaur, Sambar, Sloth Bear, Dhole, Barasingha*). We never convert blurred centroids into false precision points.
-        3. **Rigorous Outlier Hotspot Rule:** Rather than arbitrary counts, we compute Modified Z-Scores using Median Absolute Deviation ($M_i = 0.6745 \\times (x_i - \\text{median}) / \\text{MAD} > 3.5$), falling back to the 90th percentile if MAD is 0.
-        4. **Temporal Holdout Validation:** Hotspot predictions are trained on historical years and tested against future held-out years, benchmarked against Random and Density-only baselines with 95% bootstrap confidence intervals.
-        5. **Exposure vs. Collision Distinction:** Highway screening identifies **exposure to traffic**, NOT confirmed roadkill, preventing premature conclusions while directing scarce conservation survey budgets.
+        1. **Zero Data Fabrication:** Every single record originates directly from official open APIs (GBIF, OpenStreetMap Overpass, geoBoundaries, IMD).
+        2. **Precautionary Species Privacy:** iNaturalist injects deliberate ~30 km obfuscation for 7 threatened species (*Tiger, Leopard, Gaur, Sambar, Sloth Bear, Dhole, Barasingha*). We never convert blurred centroids into false pinpoint coordinates; they are strictly aggregated into 0.25° cells.
+        3. **Robust Outlier Detection:** Rather than naive fatality counts, we employ the Modified Z-Score using Median and Median Absolute Deviation ($M_i = 0.6745 \\times (x_i - \\text{median}) / \\text{MAD} > 3.5$), falling back to the 90th percentile if MAD is 0.
+        4. **Temporal Holdout Validation:** Hotspot models are trained on past records ($\le 2015$) and evaluated on future unseen records ($> 2015$), benchmarking against density-only and random baselines.
+        5. **Exposure vs. Mortality Distinction:** Screening identifies **predicted exposure to traffic**, NOT observed road mortalities, directing forest department survey budgets with scientific honesty.
         """
     )
 
-with col_arch2:
-    st.info(
-        """
-        **System Specifications:**
-        - **Language:** Python 3.11
-        - **Spatial Engine:** GeoPandas 0.14+ & Shapely 2.0+
-        - **Statistical Validation:** scikit-learn & Bootstrap resampling
-        - **Caching Layer:** Local Parquet & SQLite Database (`data/wildguard.db`)
-        - **Cache Expiry:** 30 Days with automatic staleness check
-        - **UI Framework:** Streamlit Wide Projector/Laptop Mode
-        """
-    )
+with tab_arch:
+    col_a1, col_a2 = st.columns(2)
+    with col_a1:
+        st.markdown(
+            """
+            - **Platform:** Python 3.11 & Streamlit Wide Layout
+            - **Spatial Engine:** GeoPandas & Shapely 2.0+ Vector Geometry
+            - **Statistical Metrics:** scikit-learn & 1,000-iteration Bootstrap CIs
+            - **Basemap Engine:** High-performance OpenStreetMap Leaflet layers
+            """
+        )
+    with col_a2:
+        st.markdown(
+            """
+            - **Persistence Layer:** SQLite (`data/wildguard.db`) & Apache Parquet
+            - **Caching Policy:** 30-Day TTL with automatic freshness validation
+            - **Network Resiliency:** Exponential backoff retry with offline fallback
+            - **API Credentials:** 100% Open Access (Zero API keys required)
+            """
+        )
 

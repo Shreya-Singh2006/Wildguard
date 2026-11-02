@@ -73,13 +73,20 @@ def apply_custom_css():
             max-width: 95%;
         }
 
-        /* Metric cards - high contrast dark card */
+        /* Metric cards - high contrast dark card with subtle elevation */
         div[data-testid="stMetric"] {
             background-color: #1e293b !important;
             border: 1px solid #334155 !important;
             padding: 14px 18px !important;
-            border-radius: 10px !important;
+            border-radius: 12px !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.25) !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+
+        div[data-testid="stMetric"]:hover {
+            border-color: #38bdf8 !important;
+            box-shadow: 0 6px 12px -2px rgba(56, 189, 248, 0.15) !important;
+            transform: translateY(-2px);
         }
 
         div[data-testid="stMetric"] label,
@@ -88,13 +95,14 @@ def apply_custom_css():
             color: #94a3b8 !important;
             font-weight: 600 !important;
             font-size: 0.88rem !important;
+            letter-spacing: 0.02em !important;
         }
 
         div[data-testid="stMetric"] div[data-testid="stMetricValue"] *,
         div[data-testid="stMetric"] [data-testid="stMetricValue"] div {
             color: #f8fafc !important;
             font-weight: 800 !important;
-            font-size: 1.65rem !important;
+            font-size: 1.75rem !important;
         }
 
         div[data-testid="stMetric"] div[data-testid="stMetricDelta"] *,
@@ -229,8 +237,13 @@ def get_cached_roadkill() -> gpd.GeoDataFrame:
 
 @st.cache_data(ttl=600)
 def get_cached_screening() -> gpd.GeoDataFrame:
-    """Load ranked highway screening segments."""
-    return load_highway_screening()
+    """Load ranked highway screening segments and ensure center coordinates."""
+    gdf = load_highway_screening()
+    if not gdf.empty and "geometry" in gdf.columns and "center_lat" not in gdf.columns:
+        rep = gdf.geometry.representative_point()
+        gdf["center_lat"] = rep.y
+        gdf["center_lon"] = rep.x
+    return gdf
 
 
 @st.cache_data(ttl=600)
@@ -244,7 +257,7 @@ def render_sidebar_filters(sightings_gdf: Optional[gpd.GeoDataFrame] = None) -> 
     Render global sidebar filters available on all pages:
     - Species filter with friendly common names & emojis
     - Year slider (2000-2026)
-    - Coordinate uncertainty filter
+    - Coordinate uncertainty pills
     - Clear Filters button
     - Refresh data button
     """
@@ -252,7 +265,7 @@ def render_sidebar_filters(sightings_gdf: Optional[gpd.GeoDataFrame] = None) -> 
     st.sidebar.caption("Wildlife-Highway Conflict Screening & Roadkill Method Validation")
     st.sidebar.markdown("---")
 
-    # Status & Fallback Indicator
+    # Status & Fallback Indicator in clean bordered container
     selected_country = get_metadata("roadkill_selected_country", "Taiwan")
     last_fetched = get_metadata("pipeline_last_run", "Not yet fetched")
     if last_fetched != "Not yet fetched":
@@ -262,16 +275,23 @@ def render_sidebar_filters(sightings_gdf: Optional[gpd.GeoDataFrame] = None) -> 
         except Exception:
             pass
 
-    st.sidebar.info(
-        f"**Roadkill Dataset Country:** {selected_country} *(TaiRON)*\n\n"
-        f"**Sightings Focus:** Madhya Pradesh, India\n\n"
-        f"**Last Data Fetch:** {last_fetched}"
-    )
+    with st.sidebar.container(border=True):
+        st.markdown(
+            f"""
+            <div style="font-size:0.85rem; line-height: 1.6;">
+                <span style="color:#10b981; font-weight:700;">● Active Deployment</span><br>
+                <b>Roadkill Validation:</b> {selected_country} <i>(TaiRON)</i><br>
+                <b>Screening Region:</b> MP, India <i>(Kanha-Pench)</i><br>
+                <span style="color:#94a3b8; font-size:0.8rem;">Last sync: {last_fetched}</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.sidebar.markdown("### 🔍 Global Filters")
 
     # If reset was clicked in session_state, handle reset
-    if st.sidebar.button("🔄 Reset / Clear Filters", help="Reset all filters to show full dataset", use_container_width=True):
+    if st.sidebar.button("Reset All Filters", icon=":material/restart_alt:", help="Reset all filters to show full dataset", width="stretch"):
         st.session_state["filter_species"] = []
         st.session_state["filter_years"] = (2000, 2026)
         st.session_state["filter_unc"] = "All Records"
@@ -311,28 +331,35 @@ def render_sidebar_filters(sightings_gdf: Optional[gpd.GeoDataFrame] = None) -> 
         step=1,
     )
 
-    # Uncertainty Tag Filter
+    # Uncertainty Filter using clean Pills widget
     unc_options = [
         "All Records",
-        "Precise Only (<= 1,000m)",
-        "Blurred Threatened Species (~30km blur)",
+        "Precise (<=1km)",
+        "Threatened Blurred (~30km)",
     ]
     default_unc = st.session_state.get("filter_unc", "All Records")
-    unc_idx = unc_options.index(default_unc) if default_unc in unc_options else 0
+    if default_unc not in unc_options:
+        default_unc = "All Records"
 
-    uncertainty_choice = st.sidebar.selectbox(
-        "Coordinate Uncertainty Filter:",
+    uncertainty_choice = st.sidebar.pills(
+        "Coordinate Uncertainty:",
         options=unc_options,
-        index=unc_idx,
+        default=default_unc,
         key="filter_unc",
         help="Precise records have uncertainty <= 1km. Threatened species (tiger, leopard, etc.) are blurred ~30km by iNaturalist.",
-    )
+    ) or "All Records"
 
     st.sidebar.markdown("---")
 
     # Refresh Data Action
     st.sidebar.markdown("### 🔄 Data Pipeline")
-    refresh_clicked = st.sidebar.button("Refresh Open Data", help="Refetches raw data from GBIF and Overpass API")
+    refresh_clicked = st.sidebar.button(
+        "Refresh Open Data",
+        icon=":material/sync:",
+        type="primary",
+        width="stretch",
+        help="Refetches raw data from GBIF and Overpass API",
+    )
 
     return {
         "selected_species": selected_species,
@@ -421,14 +448,20 @@ def filter_sightings(
         filtered = filtered[filtered["species"].isin(selected_species)]
 
     # Filter uncertainty
-    if uncertainty_choice == "Precise Only (<= 1,000m)":
+    if uncertainty_choice in ["Precise Only (<= 1,000m)", "Precise (<= 1km)", "Precise (<=1km)"]:
         filtered = filtered[
             (filtered["uncertainty_tag"] == "precise") & (~filtered["is_threatened_blurred"])
         ]
-    elif uncertainty_choice == "Blurred Threatened Species (~30km blur)":
+    elif uncertainty_choice in [
+        "Blurred Threatened Species (~30km blur)",
+        "Threatened Blurred (~30km)",
+        "Blurred (~30km)",
+    ]:
         filtered = filtered[
             (filtered["uncertainty_tag"] == "blurred") | (filtered["is_threatened_blurred"])
         ]
+
+    return filtered
 
     return filtered
 

@@ -117,7 +117,7 @@ eval_df = pd.DataFrame([
         "Selection Status": "Selected for Roadkill Method Validation",
     },
 ])
-st.dataframe(eval_df, hide_index=True, use_container_width=True)
+st.dataframe(eval_df, hide_index=True, width="stretch")
 
 st.markdown("---")
 
@@ -126,59 +126,61 @@ st.markdown("### 🗺️ Focal Landscape: Madhya Pradesh & Kanha-Pench Corridor"
 col_map, col_text = st.columns([1.6, 1])
 
 with col_map:
-    # Build Map centered on MP
-    m = folium.Map(
-        location=[23.0, 78.5],
-        zoom_start=6,
-        tiles="OpenStreetMap",
-    )
+    with st.container(border=True):
+        # Build Map centered on MP
+        m = folium.Map(
+            location=[23.0, 78.5],
+            zoom_start=6,
+            tiles="OpenStreetMap",
+        )
 
-    # Add MP bounding box
-    bbox = MP_CONFIG["bbox"]
-    folium.Rectangle(
-        bounds=[[bbox["min_lat"], bbox["min_lon"]], [bbox["max_lat"], bbox["max_lon"]]],
-        color="#3b82f6",
-        weight=2,
-        fill=True,
-        fill_opacity=0.05,
-        popup="MP GBIF Sightings Search Bounding Box",
-    ).add_to(m)
-
-    # Add Kanha-Pench Corridor Box
-    kp_bbox = KANHA_PENCH_CONFIG["bbox"]
-    folium.Rectangle(
-        bounds=[[kp_bbox["min_lat"], kp_bbox["min_lon"]], [kp_bbox["max_lat"], kp_bbox["max_lon"]]],
-        color="#ef4444",
-        weight=3,
-        fill=True,
-        fill_opacity=0.15,
-        popup="Kanha-Pench Highway Screening Area",
-    ).add_to(m)
-
-    # Add Key Protected Areas
-    for pa in KANHA_PENCH_CONFIG["protected_areas"]:
-        folium.Marker(
-            location=[pa["lat"], pa["lon"]],
-            popup=f"<b>{pa['name']}</b><br>Protected Tiger Reserve",
-            icon=folium.Icon(color="green", icon="leaf"),
+        # Add MP bounding box
+        bbox = MP_CONFIG["bbox"]
+        folium.Rectangle(
+            bounds=[[bbox["min_lat"], bbox["min_lon"]], [bbox["max_lat"], bbox["max_lon"]]],
+            color="#3b82f6",
+            weight=2,
+            fill=True,
+            fill_opacity=0.05,
+            popup="MP GBIF Sightings Search Bounding Box",
         ).add_to(m)
 
-    st_folium(m, width=700, height=450, returned_objects=[])
-    render_map_footnote(
-        "OpenStreetMap boundaries & GBIF occurrence geography.",
-        "Blue box indicates MP search rectangle (lon 74-83, lat 21-27). Red box marks Kanha-Pench highway corridor.",
-    )
+        # Add Kanha-Pench Corridor Box
+        kp_bbox = KANHA_PENCH_CONFIG["bbox"]
+        folium.Rectangle(
+            bounds=[[kp_bbox["min_lat"], kp_bbox["min_lon"]], [kp_bbox["max_lat"], kp_bbox["max_lon"]]],
+            color="#ef4444",
+            weight=3,
+            fill=True,
+            fill_opacity=0.15,
+            popup="Kanha-Pench Highway Screening Area",
+        ).add_to(m)
+
+        # Add Key Protected Areas
+        for pa in KANHA_PENCH_CONFIG["protected_areas"]:
+            folium.Marker(
+                location=[pa["lat"], pa["lon"]],
+                popup=f"<b>{pa['name']}</b><br>Protected Tiger Reserve",
+                icon=folium.Icon(color="green", icon="leaf"),
+            ).add_to(m)
+
+        st_folium(m, width=700, height=450, returned_objects=[])
+        render_map_footnote(
+            "OpenStreetMap boundaries & GBIF occurrence geography.",
+            "Blue box indicates MP search rectangle (lon 74-83, lat 21-27). Red box marks Kanha-Pench highway corridor.",
+        )
 
 with col_text:
-    st.markdown("#### Study Area Details")
-    st.markdown(
-        """
-        - **Madhya Pradesh (MP):** Known as the 'Tiger State of India', MP harbors the highest tiger population in the country (~785 tigers).
-        - **Linear Infrastructure Conflict:** Major national highways, including NH-44 (North-South Corridor) and state highways, intersect critical wildlife corridors connecting Kanha and Pench Tiger Reserves.
-        - **Data Reality:** Official, systematically collected open roadkill mortality records do not exist for public planning in MP.
-        - **WildGuard's Approach:**
-          1. Rigorously validate the spatial hotspot algorithm where rich roadkill records exist (TaiRON).
-          2. Apply multi-criteria exposure screening directly to MP's highway network to rank stretches for field verification.
-        """
-    )
+    with st.container(border=True):
+        st.markdown("#### :material/explore: Regional Context")
+        st.markdown(
+            """
+            - **Madhya Pradesh (MP):** Known as the *Tiger State of India*, MP harbors the largest wild tiger population in the country (~785 tigers).
+            - **Linear Infrastructure Conflict:** Major national highways, including NH-44 (North-South Corridor), intersect critical wildlife corridors connecting Kanha and Pench Tiger Reserves.
+            - **Data Reality:** Official, systematically collected open roadkill mortality records do not exist for public conservation planning in MP.
+            - **WildGuard's Dual Framework:**
+              1. Rigorously validate the spatial hotspot algorithm where rich roadkill records exist (TaiRON).
+              2. Apply multi-criteria exposure screening directly to MP's highway network to rank stretches for field verification.
+            """
+        )
 
