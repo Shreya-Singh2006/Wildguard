@@ -100,7 +100,7 @@ with col_controls:
 with col_map:
     # Initialize Folium Map centered on MP
     mp_center = [23.5, 78.5]
-    fmap = folium.Map(location=mp_center, zoom_start=7, tiles="CartoDB positron")
+    fmap = folium.Map(location=mp_center, zoom_start=7, tiles="OpenStreetMap")
 
     # Major Tiger Reserves
     reserves = [

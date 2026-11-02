@@ -130,7 +130,7 @@ with col_map:
     m = folium.Map(
         location=[23.0, 78.5],
         zoom_start=6,
-        tiles="CartoDB positron",
+        tiles="OpenStreetMap",
     )
 
     # Add MP bounding box

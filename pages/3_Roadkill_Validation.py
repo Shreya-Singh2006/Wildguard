@@ -177,7 +177,7 @@ with col_vinfo:
 
 with col_vmap:
     # Taiwan focal area center
-    m_val = folium.Map(location=[24.0, 120.7], zoom_start=9, tiles="CartoDB positron")
+    m_val = folium.Map(location=[24.0, 120.7], zoom_start=9, tiles="OpenStreetMap")
 
     # Sample roadkill points for snappy map performance
     if not roadkill_gdf.empty:

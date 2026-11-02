@@ -85,6 +85,11 @@ def aggregate_sightings_by_grid(
     2. Blurred threatened species grid (wide cells, never mixed into precise counts)
     Returns: (precise_grid_gdf, blurred_grid_gdf)
     """
+    # Handle if cell_size_deg was passed as 2nd positional argument
+    if isinstance(grid_gdf, (int, float)):
+        cell_size_deg = float(grid_gdf)
+        grid_gdf = None
+
     if grid_gdf is None or grid_gdf.empty:
         grid_gdf = generate_mp_grid(cell_size_deg=cell_size_deg)
 
@@ -127,16 +132,16 @@ def aggregate_sightings_by_grid(
 
     precise_grid = grid_gdf.copy()
     if not precise_pts.empty:
-        p_counts = fast_cell_assign(precise_pts).rename("precise_count")
-        precise_grid = precise_grid.merge(p_counts, on="cell_id", how="left")
+        p_df = fast_cell_assign(precise_pts).rename_axis("cell_id").reset_index(name="precise_count")
+        precise_grid = precise_grid.merge(p_df, on="cell_id", how="left")
         precise_grid["precise_count"] = precise_grid["precise_count"].fillna(0).astype(int)
     else:
         precise_grid["precise_count"] = 0
 
     blurred_grid = grid_gdf.copy()
     if not blurred_pts.empty:
-        b_counts = fast_cell_assign(blurred_pts).rename("blurred_count")
-        blurred_grid = blurred_grid.merge(b_counts, on="cell_id", how="left")
+        b_df = fast_cell_assign(blurred_pts).rename_axis("cell_id").reset_index(name="blurred_count")
+        blurred_grid = blurred_grid.merge(b_df, on="cell_id", how="left")
         blurred_grid["blurred_count"] = blurred_grid["blurred_count"].fillna(0).astype(int)
     else:
         blurred_grid["blurred_count"] = 0

@@ -130,7 +130,7 @@ col_map, col_table = st.columns([1.5, 1])
 
 with col_map:
     st.markdown("#### 🗺️ Corridor Screening Map")
-    m_screen = folium.Map(location=[22.1, 80.0], zoom_start=8, tiles="CartoDB positron")
+    m_screen = folium.Map(location=[22.1, 80.0], zoom_start=8, tiles="OpenStreetMap")
 
     # Add Kanha and Pench reserve locations
     for pa in KANHA_PENCH_CONFIG["protected_areas"]:
