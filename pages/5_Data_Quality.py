@@ -60,146 +60,142 @@ st.markdown(
 # Active filter status chip
 render_filter_status_banner(filters, len(sightings_gdf), len(filtered_sightings))
 
-# 1. Cleaning Funnel: Rows Removed Per Step
-st.markdown("### 🧹 1. Cleaning Attrition Funnel")
-st.markdown("Record counts logged at every successive data cleaning stage for Madhya Pradesh mammal records:")
+tab_funnel, tab_unc, tab_bias = st.tabs([
+    ":material/filter_alt: Cleaning Attrition Funnel",
+    ":material/gps_fixed: Coordinate Precision & Blurring",
+    ":material/beach_access: Safari & Monsoon Bias",
+])
 
-audit_rows = get_cleaning_audit_from_db("MP Mammal Sightings")
-if audit_rows:
-    audit_df = pd.DataFrame(audit_rows)
-    audit_df.columns = ["Cleaning Stage", "Records Remaining", "Records Removed"]
+with tab_funnel:
+    st.markdown("#### Record Counts Logged at Every Successive Data Cleaning Stage")
+    audit_rows = get_cleaning_audit_from_db("MP Mammal Sightings")
+    if audit_rows:
+        audit_df = pd.DataFrame(audit_rows)
+        audit_df.columns = ["Cleaning Stage", "Records Remaining", "Records Removed"]
 
-    c_audit_tbl, c_audit_chart = st.columns([1.2, 1])
-    with c_audit_tbl:
-        st.dataframe(audit_df, hide_index=True, use_container_width=True)
+        c_audit_tbl, c_audit_chart = st.columns([1.2, 1])
+        with c_audit_tbl:
+            with st.container(border=True):
+                st.dataframe(audit_df, hide_index=True, width="stretch")
 
-    with c_audit_chart:
-        chart_df = audit_df.set_index("Cleaning Stage")["Records Remaining"]
-        st.bar_chart(chart_df)
-else:
-    st.info("Cleaning audit data is being compiled. Please refresh once the pipeline run completes.")
-
-st.markdown("---")
-
-# 2. Coordinate Uncertainty & Deliberate Blurring Breakdown
-st.markdown("### 🎯 2. Coordinate Precision & Deliberate Species Blurring")
-col_u1, col_u2 = st.columns(2)
-
-analysis_gdf = filtered_sightings if not filtered_sightings.empty else sightings_gdf
-
-with col_u1:
-    st.markdown("#### Overall Coordinate Uncertainty Breakdown")
-    if not analysis_gdf.empty and "uncertainty_tag" in analysis_gdf.columns:
-        unc_counts = analysis_gdf["uncertainty_tag"].value_counts().reset_index()
-        unc_counts.columns = ["Uncertainty Category", "Record Count"]
-        unc_counts["Percentage"] = (
-            (unc_counts["Record Count"] / len(analysis_gdf) * 100).round(1).astype(str) + "%"
-        )
-        st.dataframe(unc_counts, hide_index=True, use_container_width=True)
-        st.caption(
-            "• **Precise:** <= 1,000 m (1 km) — eligible for spatial buffering.\n"
-            "• **Blurred:** >= 20,000 m (20 km) or endangered species — aggregated into 0.25° cells.\n"
-            "• **Other / Missing:** Intermediate or unrecorded uncertainty."
-        )
+        with c_audit_chart:
+            with st.container(border=True):
+                chart_df = audit_df.set_index("Cleaning Stage")["Records Remaining"]
+                st.bar_chart(chart_df, color="#10b981")
     else:
-        st.info("No uncertainty data.")
+        st.info("Cleaning audit data is being compiled. Please refresh once the pipeline run completes.")
 
-with col_u2:
-    st.markdown("#### Deliberate Blurring Share by Threatened Species")
-    if not analysis_gdf.empty and "species" in analysis_gdf.columns:
-        thr_data = []
-        for sci_name, common_name in THREATENED_BLURRED_SPECIES.items():
-            matched = analysis_gdf[
-                analysis_gdf["species"].str.contains(sci_name, case=False, na=False)
-                | analysis_gdf["scientificName"].str.contains(sci_name, case=False, na=False)
-            ]
-            tot_sp = len(matched)
-            if tot_sp > 0:
-                blurred_sp = int(matched["is_threatened_blurred"].sum())
-                thr_data.append({
-                    "Species": f"{common_name} ({sci_name})",
-                    "Total Records": tot_sp,
-                    "Blurred Records": blurred_sp,
-                    "Percent Blurred": f"{round(blurred_sp / tot_sp * 100, 1)}%",
-                })
-        if thr_data:
-            st.dataframe(pd.DataFrame(thr_data), hide_index=True, use_container_width=True)
-        else:
-            st.write("No threatened species matching active filters.")
-    st.caption("iNaturalist deliberately injects ~30 km coordinate obfuscation for red-listed taxa to prevent poaching.")
+with tab_unc:
+    st.markdown("#### Coordinate Precision Audit & Deliberate Species Obfuscation")
+    col_u1, col_u2 = st.columns(2)
 
-st.markdown("---")
+    analysis_gdf = filtered_sightings if not filtered_sightings.empty else sightings_gdf
 
-# 3. Safari Route & Seasonal Tourism Bias
-st.markdown("### 🚙 3. Safari Route & Monsoon Seasonality Bias Analysis")
+    with col_u1:
+        with st.container(border=True):
+            st.markdown("##### Overall Coordinate Uncertainty Breakdown")
+            if not analysis_gdf.empty and "uncertainty_tag" in analysis_gdf.columns:
+                unc_counts = analysis_gdf["uncertainty_tag"].value_counts().reset_index()
+                unc_counts.columns = ["Uncertainty Category", "Record Count"]
+                unc_counts["Percentage"] = (
+                    (unc_counts["Record Count"] / len(analysis_gdf) * 100).round(1).astype(str) + "%"
+                )
+                st.dataframe(unc_counts, hide_index=True, width="stretch")
+                st.caption(
+                    "• **Precise:** <= 1,000 m (1 km) — eligible for spatial buffering.\n"
+                    "• **Blurred:** >= 20,000 m (20 km) or endangered species — aggregated into 0.25° cells.\n"
+                    "• **Other / Missing:** Intermediate or unrecorded uncertainty."
+                )
+            else:
+                st.info("No uncertainty data.")
 
-bias_data = get_metadata("sampling_bias", {})
-climate_data = get_metadata("climate_summary", {})
+    with col_u2:
+        with st.container(border=True):
+            st.markdown("##### Deliberate Blurring Share by Threatened Species")
+            if not analysis_gdf.empty and "species" in analysis_gdf.columns:
+                thr_data = []
+                for sci_name, common_name in THREATENED_BLURRED_SPECIES.items():
+                    matched = analysis_gdf[
+                        analysis_gdf["species"].str.contains(sci_name, case=False, na=False)
+                        | analysis_gdf["scientificName"].str.contains(sci_name, case=False, na=False)
+                    ]
+                    tot_sp = len(matched)
+                    if tot_sp > 0:
+                        blurred_sp = int(matched["is_threatened_blurred"].sum())
+                        thr_data.append({
+                            "Species": f"{common_name} ({sci_name})",
+                            "Total Records": tot_sp,
+                            "Blurred Records": blurred_sp,
+                            "Percent Blurred": f"{round(blurred_sp / tot_sp * 100, 1)}%",
+                        })
+                if thr_data:
+                    st.dataframe(pd.DataFrame(thr_data), hide_index=True, width="stretch")
+                else:
+                    st.write("No threatened species matching active filters.")
+            st.caption("iNaturalist deliberately injects ~30 km coordinate obfuscation for red-listed taxa to prevent poaching.")
 
-col_b1, col_b2 = st.columns(2)
+with tab_bias:
+    st.markdown("#### Geographic Safari Clustering & Seasonality Bias Analysis")
+    bias_data = get_metadata("sampling_bias", {})
+    climate_data = get_metadata("climate_summary", {})
 
-with col_b1:
-    st.markdown("#### Safari Route Spatial Concentration")
-    res_share = bias_data.get("reserve_share_pct", 78.4)
-    near_cnt = bias_data.get("near_reserve_count", 0)
+    col_b1, col_b2 = st.columns(2)
 
-    st.markdown(
-        f"""
-        <div class="info-card-box">
-            <span style="font-size: 2.2rem; font-weight: 800; color: #ef4444;">{res_share}%</span><br>
-            <b style="font-size:1.05rem; color:#f8fafc;">of all MP mammal records fall within 30 km of just 5 Tiger Reserves</b><br>
-            <span style="color:#94a3b8;">(Kanha, Pench, Bandhavgarh, Panna, and Satpura).</span><br><br>
-            <i style="color:#cbd5e1;">Implication: Roads cutting through rural agricultural districts appear 'empty' of wildlife 
-            not because animals are absent, but because tourists and citizen scientists do not record observations there.</i>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    with col_b1:
+        res_share = bias_data.get("reserve_share_pct", 78.4)
+        st.markdown(
+            f"""
+            <div class="info-card-box">
+                <span style="font-size: 2.2rem; font-weight: 800; color: #ef4444;">{res_share}%</span><br>
+                <b style="font-size:1.05rem; color:#f8fafc;">of all MP mammal records fall within 30 km of just 5 Tiger Reserves</b><br>
+                <span style="color:#94a3b8;">(Kanha, Pench, Bandhavgarh, Panna, and Satpura).</span><br><br>
+                <i style="color:#cbd5e1;">Implication: Roads cutting through rural agricultural districts appear 'empty' of wildlife 
+                not because animals are absent, but because tourists and citizen scientists do not record observations there.</i>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-with col_b2:
-    st.markdown("#### The 'Monsoon Dip' vs April Peak")
-    apr_pct = bias_data.get("april_share_pct", 24.5)
-    mon_pct = bias_data.get("monsoon_share_pct", 3.2)
+    with col_b2:
+        apr_pct = bias_data.get("april_share_pct", 24.5)
+        mon_pct = bias_data.get("monsoon_share_pct", 3.2)
+        st.markdown(
+            f"""
+            <div class="info-card-box">
+                • <b style="color:#fbbf24;">April Peak (Summer Safari):</b> Accounts for <b style="color:#38bdf8;">{apr_pct}%</b> of all yearly observations as dry conditions concentrate wildlife at waterholes and tourist visits peak.<br><br>
+                • <b style="color:#60a5fa;">Monsoon Collapse (July–Sept):</b> Plummets to only <b style="color:#ef4444;">{mon_pct}%</b> of yearly records because National Parks officially close for the monsoon season.<br><br>
+                <i style="color:#cbd5e1;">Conclusion: Temporal variations reflect gate hours and rain, not seasonal migration.</i>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    st.markdown(
-        f"""
-        <div class="info-card-box">
-            • <b style="color:#fbbf24;">April Peak (Summer Safari):</b> Accounts for <b style="color:#38bdf8;">{apr_pct}%</b> of all yearly observations as dry conditions concentrate wildlife at waterholes and tourist visits peak.<br><br>
-            • <b style="color:#60a5fa;">Monsoon Collapse (July–Sept):</b> Plummets to only <b style="color:#ef4444;">{mon_pct}%</b> of yearly records because National Parks officially close for the monsoon season.<br><br>
-            <i style="color:#cbd5e1;">Conclusion: Temporal variations reflect gate hours and rain, not seasonal migration.</i>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown("##### Monthly Sightings vs. IMD Climatological Rainfall Overlay")
+    st.caption("Juxtaposition of monthly observation counts against India Meteorological Department (IMD) 30-year rainfall normals (mm) in MP.")
 
-st.markdown("---")
+    monthly_sightings = bias_data.get("monthly_trend", [])
+    monthly_climate = climate_data.get("monthly", [])
 
-# Monthly Sightings Curve vs IMD Rainfall Overlay
-st.markdown("### 🌧️ Monthly Sightings vs. IMD Climatological Rainfall")
-st.caption("Juxtaposition of monthly observation counts against India Meteorological Department (IMD) 30-year rainfall normals (mm) in MP.")
+    if monthly_sightings and monthly_climate:
+        combined_months = []
+        for s_item in monthly_sightings:
+            m_num = s_item["month_num"]
+            c_item = next((c for c in monthly_climate if c["month"] == m_num), {})
+            combined_months.append({
+                "Month": s_item["month_name"],
+                "Sightings Count": s_item["count"],
+                "Rainfall (mm) [IMD]": c_item.get("rainfall_mm", 0.0),
+                "Mean Temp (°C) [IMD]": c_item.get("temp_mean_c", 0.0),
+                "Park Operational Status": c_item.get("season", ""),
+            })
 
-monthly_sightings = bias_data.get("monthly_trend", [])
-monthly_climate = climate_data.get("monthly", [])
+        comb_df = pd.DataFrame(combined_months)
+        with st.container(border=True):
+            st.dataframe(comb_df, hide_index=True, width="stretch")
 
-if monthly_sightings and monthly_climate:
-    combined_months = []
-    for s_item in monthly_sightings:
-        m_num = s_item["month_num"]
-        c_item = next((c for c in monthly_climate if c["month"] == m_num), {})
-        combined_months.append({
-            "Month": s_item["month_name"],
-            "Sightings Count": s_item["count"],
-            "Rainfall (mm) [IMD]": c_item.get("rainfall_mm", 0.0),
-            "Mean Temp (°C) [IMD]": c_item.get("temp_mean_c", 0.0),
-            "Park Operational Status": c_item.get("season", ""),
-        })
-
-    comb_df = pd.DataFrame(combined_months)
-    st.dataframe(comb_df, hide_index=True, use_container_width=True)
-
-    # Chart showing inverse correlation between monsoon rain and recorded sightings
-    chart_data = comb_df.set_index("Month")[["Sightings Count", "Rainfall (mm) [IMD]"]]
-    st.line_chart(chart_data)
-else:
-    st.info("Compiling monthly climatological alignment...")
+        # Chart showing inverse correlation between monsoon rain and recorded sightings
+        chart_data = comb_df.set_index("Month")[["Sightings Count", "Rainfall (mm) [IMD]"]]
+        st.line_chart(chart_data)
+    else:
+        st.info("Compiling monthly climatological alignment...")
 

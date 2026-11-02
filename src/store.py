@@ -28,6 +28,7 @@ _INITIALIZED_DBS = set()
 
 
 def get_db_connection(db_path: Path = SQLITE_DB_PATH) -> sqlite3.Connection:
+<<<<<<< HEAD
     """Create a SQLite connection, creating the schema on first use so that
     reads on a fresh clone (no tables yet) return empty results instead of crashing."""
     key = str(db_path)
@@ -35,12 +36,28 @@ def get_db_connection(db_path: Path = SQLITE_DB_PATH) -> sqlite3.Connection:
         _INITIALIZED_DBS.add(key)  # mark first to avoid recursion via init_database
         init_database(db_path)
     conn = sqlite3.connect(key)
+=======
+    """Create a SQLite connection, initializing schema on first use so that
+    reads on a fresh clone return empty results instead of crashing."""
+    db_path = Path(db_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    key = str(db_path.resolve())
+    if key not in _INITIALIZED_DBS:
+        _INITIALIZED_DBS.add(key)  # mark first to prevent recursion
+        init_database(db_path)
+    conn = sqlite3.connect(str(db_path))
+>>>>>>> f75046cbf3cedc3353bdaa2e6d71dbe5d51f4820
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_database(db_path: Path = SQLITE_DB_PATH) -> None:
     """Initialize SQLite database schema for WildGuard."""
+<<<<<<< HEAD
+=======
+    db_path = Path(db_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+>>>>>>> f75046cbf3cedc3353bdaa2e6d71dbe5d51f4820
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -156,18 +173,22 @@ def set_metadata(key: str, value: Any, db_path: Path = SQLITE_DB_PATH) -> None:
 
 def get_metadata(key: str, default: Any = None, db_path: Path = SQLITE_DB_PATH) -> Any:
     """Retrieve metadata key-value pair."""
-    conn = get_db_connection(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT value FROM metadata WHERE key = ?", (key,))
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        return default
-    val_str = row["value"]
     try:
-        return json.loads(val_str)
-    except Exception:
-        return val_str
+        conn = get_db_connection(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM metadata WHERE key = ?", (key,))
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return default
+        val_str = row["value"]
+        try:
+            return json.loads(val_str)
+        except Exception:
+            return val_str
+    except Exception as e:
+        logger.warning(f"Error reading metadata key '{key}': {e}")
+        return default
 
 
 def save_cleaning_audit_to_db(audit_data: Dict[str, Any], db_path: Path = SQLITE_DB_PATH) -> None:
@@ -188,15 +209,19 @@ def save_cleaning_audit_to_db(audit_data: Dict[str, Any], db_path: Path = SQLITE
 
 def get_cleaning_audit_from_db(dataset_name: str, db_path: Path = SQLITE_DB_PATH) -> List[Dict[str, Any]]:
     """Retrieve cleaning audit steps from SQLite."""
-    conn = get_db_connection(db_path)
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT step_name, record_count, removed_count FROM cleaning_audit WHERE dataset_name = ? ORDER BY id ASC",
-        (dataset_name,),
-    )
-    rows = [dict(r) for r in cur.fetchall()]
-    conn.close()
-    return rows
+    try:
+        conn = get_db_connection(db_path)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT step_name, record_count, removed_count FROM cleaning_audit WHERE dataset_name = ? ORDER BY id ASC",
+            (dataset_name,),
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return rows
+    except Exception as e:
+        logger.warning(f"Error reading cleaning audit for {dataset_name}: {e}")
+        return []
 
 
 def save_sightings(gdf: gpd.GeoDataFrame, db_path: Path = SQLITE_DB_PATH) -> None:
@@ -242,18 +267,23 @@ def save_sightings(gdf: gpd.GeoDataFrame, db_path: Path = SQLITE_DB_PATH) -> Non
     logger.info(f"Saved {len(gdf)} sightings to SQLite and Parquet.")
 
 
-def load_sightings(db_path: Path = SQLITE_DB_PATH) -> gpd.GeoDataFrame:
+def load_sightings(db_path: Path = SQLITE_DB_PATH, use_parquet: bool = True) -> gpd.GeoDataFrame:
     """Load cleaned sightings from Parquet if available, else SQLite."""
-    parquet_path = PROCESSED_DATA_DIR / "sightings.parquet"
-    if parquet_path.exists():
+    parquet_path = PROCESSED_DATA_DIR / "sightings.parquet" if Path(db_path) == SQLITE_DB_PATH else Path(db_path).parent / "sightings.parquet"
+    if use_parquet and parquet_path.exists():
         try:
             return gpd.read_parquet(parquet_path)
         except Exception as e:
             logger.warning(f"Error reading sightings parquet: {e}")
 
-    conn = get_db_connection(db_path)
-    df = pd.read_sql_query("SELECT * FROM sightings", conn)
-    conn.close()
+    try:
+        conn = get_db_connection(db_path)
+        df = pd.read_sql_query("SELECT * FROM sightings", conn)
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Error querying sightings from SQLite: {e}")
+        return gpd.GeoDataFrame()
+
     if df.empty:
         return gpd.GeoDataFrame()
 
@@ -267,7 +297,8 @@ def load_sightings(db_path: Path = SQLITE_DB_PATH) -> gpd.GeoDataFrame:
         "coordinate_uncertainty": "coordinateUncertaintyInMeters",
         "event_date": "eventDate",
     })
-    gdf["is_threatened_blurred"] = gdf["is_threatened_blurred"].astype(bool)
+    if "is_threatened_blurred" in gdf.columns:
+        gdf["is_threatened_blurred"] = gdf["is_threatened_blurred"].astype(bool)
     return gdf
 
 
@@ -308,18 +339,23 @@ def save_roadkill(gdf: gpd.GeoDataFrame, country: str = "Taiwan", db_path: Path 
     logger.info(f"Saved {len(gdf)} roadkill records to SQLite and Parquet.")
 
 
-def load_roadkill(db_path: Path = SQLITE_DB_PATH) -> gpd.GeoDataFrame:
+def load_roadkill(db_path: Path = SQLITE_DB_PATH, use_parquet: bool = True) -> gpd.GeoDataFrame:
     """Load cleaned roadkill records from Parquet if available, else SQLite."""
-    parquet_path = PROCESSED_DATA_DIR / "roadkill.parquet"
-    if parquet_path.exists():
+    parquet_path = PROCESSED_DATA_DIR / "roadkill.parquet" if Path(db_path) == SQLITE_DB_PATH else Path(db_path).parent / "roadkill.parquet"
+    if use_parquet and parquet_path.exists():
         try:
             return gpd.read_parquet(parquet_path)
         except Exception as e:
             logger.warning(f"Error reading roadkill parquet: {e}")
 
-    conn = get_db_connection(db_path)
-    df = pd.read_sql_query("SELECT * FROM roadkill", conn)
-    conn.close()
+    try:
+        conn = get_db_connection(db_path)
+        df = pd.read_sql_query("SELECT * FROM roadkill", conn)
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Error querying roadkill from SQLite: {e}")
+        return gpd.GeoDataFrame()
+
     if df.empty:
         return gpd.GeoDataFrame()
 
@@ -383,18 +419,23 @@ def save_highway_screening(gdf: gpd.GeoDataFrame, db_path: Path = SQLITE_DB_PATH
     logger.info(f"Saved {len(gdf)} highway screening segments to SQLite and Parquet.")
 
 
-def load_highway_screening(db_path: Path = SQLITE_DB_PATH) -> gpd.GeoDataFrame:
+def load_highway_screening(db_path: Path = SQLITE_DB_PATH, use_parquet: bool = True) -> gpd.GeoDataFrame:
     """Load ranked highway screening segments."""
-    parquet_path = PROCESSED_DATA_DIR / "screening_segments.parquet"
-    if parquet_path.exists():
+    parquet_path = PROCESSED_DATA_DIR / "screening_segments.parquet" if Path(db_path) == SQLITE_DB_PATH else Path(db_path).parent / "screening_segments.parquet"
+    if use_parquet and parquet_path.exists():
         try:
             return gpd.read_parquet(parquet_path)
         except Exception as e:
             logger.warning(f"Error reading screening segments parquet: {e}")
 
-    conn = get_db_connection(db_path)
-    df = pd.read_sql_query("SELECT * FROM highway_screening ORDER BY survey_rank ASC", conn)
-    conn.close()
+    try:
+        conn = get_db_connection(db_path)
+        df = pd.read_sql_query("SELECT * FROM highway_screening ORDER BY survey_rank ASC", conn)
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Error querying highway_screening from SQLite: {e}")
+        return gpd.GeoDataFrame()
+
     if df.empty:
         return gpd.GeoDataFrame()
 
@@ -449,19 +490,24 @@ def save_validation_results(validation_dict: Dict[str, Any], db_path: Path = SQL
     logger.info("Saved validation results to SQLite and JSON.")
 
 
-def load_validation_results(db_path: Path = SQLITE_DB_PATH) -> Dict[str, Any]:
+def load_validation_results(db_path: Path = SQLITE_DB_PATH, use_json: bool = True) -> Dict[str, Any]:
     """Load validation results."""
-    json_path = PROCESSED_DATA_DIR / "validation_results.json"
-    if json_path.exists():
+    json_path = PROCESSED_DATA_DIR / "validation_results.json" if Path(db_path) == SQLITE_DB_PATH else Path(db_path).parent / "validation_results.json"
+    if use_json and json_path.exists():
         try:
             with open(json_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             logger.warning(f"Error reading validation results json: {e}")
 
-    conn = get_db_connection(db_path)
-    df = pd.read_sql_query("SELECT * FROM validation_metrics", conn)
-    conn.close()
+    try:
+        conn = get_db_connection(db_path)
+        df = pd.read_sql_query("SELECT * FROM validation_metrics", conn)
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Error querying validation_metrics from SQLite: {e}")
+        return {}
+
     if df.empty:
         return {}
     return {"models_df": df}

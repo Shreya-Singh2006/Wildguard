@@ -149,7 +149,7 @@ metrics_rows = [
     },
 ]
 
-st.dataframe(pd.DataFrame(metrics_rows), use_container_width=True, hide_index=True)
+st.dataframe(pd.DataFrame(metrics_rows), width="stretch", hide_index=True)
 
 st.markdown("---")
 
@@ -160,47 +160,51 @@ st.caption("Red segments mark statistical hotspots identified by the Outlier Rul
 col_vmap, col_vinfo = st.columns([2.5, 1])
 
 with col_vinfo:
-    st.markdown("#### Outlier Rule Parameters")
-    st.write("• **Segment Length:** 1.0 km")
-    st.write("• **Buffer Distance:** 200 m")
-    st.write("• **Threshold Rule:** Modified Z-score > 3.5")
-    st.write("• **Fallback:** 90th percentile of non-zero segments")
-    st.write(f"• **Train Hotspots:** {split_info.get('train_hotspots', 0)}")
-    st.write(f"• **Test Hotspots:** {split_info.get('test_hotspots', 0)}")
+    with st.container(border=True):
+        st.markdown("#### :material/tune: Outlier Model Parameters")
+        st.write("• **Segment Length:** 1.0 km")
+        st.write("• **Buffer Distance:** 200 m")
+        st.write("• **Threshold Rule:** Modified Z-score > 3.5")
+        st.write("• **Fallback:** 90th percentile of non-zero segments")
+        st.write(f"• **Train Hotspots:** :red-badge[{split_info.get('train_hotspots', 0)}]")
+        st.write(f"• **Test Hotspots:** :red-badge[{split_info.get('test_hotspots', 0)}]")
 
-    st.info(
-        "**Honest Scientific Appraisal:** Real roadkill observations exhibit spatial clustering along "
-        "agricultural-forest fringes and river crossings. The Modified Z-score model substantially "
-        "outperforms random chance in Precision@K, confirming that past mortality clusters are predictive "
-        "of future risk zones."
-    )
+    with st.container(border=True):
+        st.markdown("#### :material/verified: Validation Verdict")
+        st.caption(
+            "Real road mortalities exhibit spatial clustering along "
+            "agricultural-forest fringes. The Modified Z-score model substantially "
+            "outperforms random chance in Precision@K, validating that spatial clustering "
+            "methods are effective for wildlife mitigation planning."
+        )
 
 with col_vmap:
-    # Taiwan focal area center
-    m_val = folium.Map(location=[24.0, 120.7], zoom_start=9, tiles="OpenStreetMap")
+    with st.container(border=True):
+        # Taiwan focal area center
+        m_val = folium.Map(location=[24.0, 120.7], zoom_start=9, tiles="OpenStreetMap")
 
-    # Sample roadkill points for snappy map performance
-    if not roadkill_gdf.empty:
-        sample_pts = roadkill_gdf.sample(min(350, len(roadkill_gdf)), random_state=42)
-        for _, row in sample_pts.iterrows():
-            lat = row.get("decimalLatitude")
-            lon = row.get("decimalLongitude")
-            if pd.notna(lat) and pd.notna(lon):
-                sp = row.get("species") or row.get("scientificName") or "Wildlife"
-                folium.CircleMarker(
-                    location=[lat, lon],
-                    radius=2.5,
-                    color="#dc2626",
-                    fill=True,
-                    fill_color="#ef4444",
-                    fill_opacity=0.6,
-                    tooltip=f"Roadkill: {sp}",
-                    popup=f"<b>Roadkill: {sp}</b><br>Year: {row.get('year', 'N/A')}",
-                ).add_to(m_val)
+        # Sample roadkill points for snappy map performance
+        if not roadkill_gdf.empty:
+            sample_pts = roadkill_gdf.sample(min(350, len(roadkill_gdf)), random_state=42)
+            for _, row in sample_pts.iterrows():
+                lat = row.get("decimalLatitude")
+                lon = row.get("decimalLongitude")
+                if pd.notna(lat) and pd.notna(lon):
+                    sp = row.get("species") or row.get("scientificName") or "Wildlife"
+                    folium.CircleMarker(
+                        location=[lat, lon],
+                        radius=2.5,
+                        color="#dc2626",
+                        fill=True,
+                        fill_color="#ef4444",
+                        fill_opacity=0.6,
+                        tooltip=f"Roadkill: {sp}",
+                        popup=f"<b>Roadkill: {sp}</b><br>Year: {row.get('year', 'N/A')}",
+                    ).add_to(m_val)
 
-    st_folium(m_val, width=850, height=500, returned_objects=[])
-    render_map_footnote(
-        "Taiwan Roadkill Observation Network (TaiRON, GBIF datasetKey: db09684b-0fd1-431e-b5fa-4c1532fbdb14).",
-        "Used exclusively for algorithmic method validation due to India's data deficit. Red markers represent verified animal carcasses on roads.",
-    )
+        st_folium(m_val, width=850, height=500, returned_objects=[])
+        render_map_footnote(
+            "Taiwan Roadkill Observation Network (TaiRON, GBIF datasetKey: db09684b-0fd1-431e-b5fa-4c1532fbdb14).",
+            "Used exclusively for algorithmic method validation due to India's data deficit. Red markers represent verified animal carcasses on roads.",
+        )
 
