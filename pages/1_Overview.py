@@ -18,10 +18,13 @@ from src.pipeline import run_full_pipeline
 from src.store import get_metadata
 from src.ui_common import (
     apply_custom_css,
+    filter_sightings,
     get_cached_roadkill,
     get_cached_screening,
     get_cached_sightings,
     get_cached_validation,
+    is_filter_active,
+    render_filter_status_banner,
     render_map_footnote,
     render_sidebar_filters,
 )
@@ -35,6 +38,12 @@ screening_gdf = get_cached_screening()
 validation_data = get_cached_validation()
 
 filters = render_sidebar_filters(sightings_gdf)
+filtered_sightings = filter_sightings(
+    sightings_gdf,
+    filters["selected_species"],
+    filters["year_range"],
+    filters["uncertainty_choice"],
+)
 
 if filters.get("refresh_clicked"):
     with st.status("Refreshing open data from GBIF and Overpass...", expanded=True) as status:
@@ -66,14 +75,18 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Active filter banner
+render_filter_status_banner(filters, len(sightings_gdf), len(filtered_sightings))
+
 # Metrics Grid
 m1, m2, m3, m4 = st.columns(4)
 with m1:
-    st.metric("Total MP Sightings", f"{len(sightings_gdf):,}", "Mammalia (2000-2026)")
+    sightings_sub = f"Filtered from {len(sightings_gdf):,}" if is_filter_active(filters) else "Mammalia (2000-2026)"
+    st.metric("Total MP Sightings", f"{len(filtered_sightings):,}", sightings_sub)
 with m2:
-    blurred_count = int(sightings_gdf["is_threatened_blurred"].sum()) if not sightings_gdf.empty else 0
-    precise_count = len(sightings_gdf) - blurred_count
-    st.metric("Precise Sightings (<= 1km)", f"{precise_count:,}", f"{round(precise_count/max(1, len(sightings_gdf))*100, 1)}% of total")
+    blurred_count = int(filtered_sightings["is_threatened_blurred"].sum()) if not filtered_sightings.empty else 0
+    precise_count = len(filtered_sightings) - blurred_count
+    st.metric("Precise Sightings (<= 1km)", f"{precise_count:,}", f"{round(precise_count/max(1, len(filtered_sightings))*100, 1)}% of filtered")
 with m3:
     st.metric("TaiRON Roadkill Records", f"{len(roadkill_gdf):,}", "High precision validation")
 with m4:
@@ -150,7 +163,7 @@ with col_map:
             icon=folium.Icon(color="green", icon="leaf"),
         ).add_to(m)
 
-    st_folium(m, width=700, height=450)
+    st_folium(m, width=700, height=450, returned_objects=[])
     render_map_footnote(
         "OpenStreetMap boundaries & GBIF occurrence geography.",
         "Blue box indicates MP search rectangle (lon 74-83, lat 21-27). Red box marks Kanha-Pench highway corridor.",

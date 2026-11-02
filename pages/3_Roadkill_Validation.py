@@ -18,6 +18,7 @@ from src.store import get_metadata
 from src.ui_common import (
     apply_custom_css,
     get_cached_roadkill,
+    get_cached_sightings,
     get_cached_validation,
     render_map_footnote,
     render_sidebar_filters,
@@ -27,8 +28,9 @@ apply_custom_css()
 
 # Load cached data
 roadkill_gdf = get_cached_roadkill()
+sightings_gdf = get_cached_sightings()
 validation_dict = get_cached_validation()
-filters = render_sidebar_filters()
+filters = render_sidebar_filters(sightings_gdf)
 
 st.title("🎯 Roadkill Hotspot Method Validation")
 st.markdown(
@@ -177,9 +179,9 @@ with col_vmap:
     # Taiwan focal area center
     m_val = folium.Map(location=[24.0, 120.7], zoom_start=9, tiles="CartoDB positron")
 
-    # Sample roadkill points for map performance
+    # Sample roadkill points for snappy map performance
     if not roadkill_gdf.empty:
-        sample_pts = roadkill_gdf.sample(min(800, len(roadkill_gdf)), random_state=42)
+        sample_pts = roadkill_gdf.sample(min(350, len(roadkill_gdf)), random_state=42)
         for _, row in sample_pts.iterrows():
             lat = row.get("decimalLatitude")
             lon = row.get("decimalLongitude")
@@ -192,10 +194,11 @@ with col_vmap:
                     fill=True,
                     fill_color="#ef4444",
                     fill_opacity=0.6,
+                    tooltip=f"Roadkill: {sp}",
                     popup=f"<b>Roadkill: {sp}</b><br>Year: {row.get('year', 'N/A')}",
                 ).add_to(m_val)
 
-    st_folium(m_val, width=850, height=500)
+    st_folium(m_val, width=850, height=500, returned_objects=[])
     render_map_footnote(
         "Taiwan Roadkill Observation Network (TaiRON, GBIF datasetKey: db09684b-0fd1-431e-b5fa-4c1532fbdb14).",
         "Used exclusively for algorithmic method validation due to India's data deficit. Red markers represent verified animal carcasses on roads.",

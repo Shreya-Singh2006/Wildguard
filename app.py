@@ -27,10 +27,13 @@ from src.pipeline import run_full_pipeline
 from src.store import get_metadata
 from src.ui_common import (
     apply_custom_css,
+    filter_sightings,
     get_cached_roadkill,
     get_cached_screening,
     get_cached_sightings,
     get_cached_validation,
+    is_filter_active,
+    render_filter_status_banner,
     render_sidebar_filters,
 )
 
@@ -44,6 +47,12 @@ validation_data = get_cached_validation()
 
 # Render universal sidebar filters
 filters = render_sidebar_filters(sightings_gdf)
+filtered_sightings = filter_sightings(
+    sightings_gdf,
+    filters["selected_species"],
+    filters["year_range"],
+    filters["uncertainty_choice"],
+)
 
 # Handle Refresh Data button
 if filters.get("refresh_clicked"):
@@ -87,16 +96,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Render active filter status chip if filters are modified
+render_filter_status_banner(filters, len(sightings_gdf), len(filtered_sightings))
+
 # Top KPI Metric Row
 kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 with kpi1:
+    sightings_delta = f"Filtered from {len(sightings_gdf):,}" if is_filter_active(filters) else "All clean MP records"
     st.metric(
         "MP Mammal Sightings",
-        f"{len(sightings_gdf):,}",
+        f"{len(filtered_sightings):,}",
+        delta=sightings_delta,
+        delta_color="normal" if not is_filter_active(filters) else "inverse",
         help="Cleaned human observation mammal sightings in MP (2000-2026)",
     )
 with kpi2:
-    blurred_count = int(sightings_gdf["is_threatened_blurred"].sum()) if not sightings_gdf.empty else 0
+    blurred_count = int(filtered_sightings["is_threatened_blurred"].sum()) if not filtered_sightings.empty else 0
     st.metric(
         "Threatened Blurred Records",
         f"{blurred_count:,}",

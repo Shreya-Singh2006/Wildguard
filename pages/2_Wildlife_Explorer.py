@@ -21,6 +21,7 @@ from src.ui_common import (
     apply_custom_css,
     filter_sightings,
     get_cached_sightings,
+    render_filter_status_banner,
     render_map_footnote,
     render_sidebar_filters,
 )
@@ -49,6 +50,9 @@ filtered_gdf = filter_sightings(
     filters["year_range"],
     filters["uncertainty_choice"],
 )
+
+# Prominent active filter status chip
+render_filter_status_banner(filters, len(sightings_gdf), len(filtered_gdf))
 
 # Metric Summary Bar
 col1, col2, col3, col4 = st.columns(4)
@@ -150,9 +154,10 @@ with col_map:
         precise_pts = filtered_gdf[
             (filtered_gdf["uncertainty_tag"] == "precise") & (~filtered_gdf["is_threatened_blurred"])
         ]
-        # Sample to at most 1,500 points for smooth browser rendering
-        if len(precise_pts) > 1500:
-            precise_pts = precise_pts.sample(1500, random_state=42)
+        # Sample to 350 points for snappy, instantaneous Leaflet rendering
+        total_precise = len(precise_pts)
+        if total_precise > 350:
+            precise_pts = precise_pts.sample(350, random_state=42)
 
         for _, row in precise_pts.iterrows():
             lat = row.get("decimalLatitude")
@@ -167,11 +172,12 @@ with col_map:
                     color="#0d9488",
                     fill=True,
                     fill_color="#14b8a6",
-                    fill_opacity=0.7,
+                    fill_opacity=0.75,
+                    tooltip=f"{sp_name} ({yr})",
                     popup=f"<b>{sp_name}</b><br>Year: {yr}<br>Coordinate Uncertainty: {unc}m",
                 ).add_to(fmap)
 
-    st_folium(fmap, width=850, height=550)
+    st_folium(fmap, width=850, height=550, returned_objects=[])
     render_map_footnote(
         "GBIF Occurrence API (taxonKey: 359 Mammalia, country: IN, basisOfRecord: HUMAN_OBSERVATION, 2000-2026).",
         "Threatened species (tigers, leopards, gaurs, sloth bears, dholes, sambar, barasingha) are strictly displayed as 0.25° (~27 km) wide grid cells due to deliberate iNaturalist blurring. Point markers are restricted to non-threatened records with <= 1 km uncertainty. Do NOT use as animal census or migration corridors.",
