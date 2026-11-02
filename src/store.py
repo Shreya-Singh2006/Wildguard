@@ -24,16 +24,25 @@ from src.config import PROCESSED_DATA_DIR, SQLITE_DB_PATH
 logger = logging.getLogger(__name__)
 
 
+_INITIALIZED_DBS = set()
+
+
 def get_db_connection(db_path: Path = SQLITE_DB_PATH) -> sqlite3.Connection:
-    """Create or return a SQLite connection."""
-    conn = sqlite3.connect(str(db_path))
+    """Create a SQLite connection, creating the schema on first use so that
+    reads on a fresh clone (no tables yet) return empty results instead of crashing."""
+    key = str(db_path)
+    if key not in _INITIALIZED_DBS:
+        _INITIALIZED_DBS.add(key)  # mark first to avoid recursion via init_database
+        init_database(db_path)
+    conn = sqlite3.connect(key)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_database(db_path: Path = SQLITE_DB_PATH) -> None:
     """Initialize SQLite database schema for WildGuard."""
-    conn = get_db_connection(db_path)
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     cur.execute("""
