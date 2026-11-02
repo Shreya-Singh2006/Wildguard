@@ -50,6 +50,7 @@ if filters.get("refresh_clicked"):
         st.write("Executing live queries...")
         run_full_pipeline(force_refresh=True)
         status.update(label="Data refresh complete!", state="complete", expanded=False)
+    st.cache_data.clear()
     st.rerun()
 
 st.title("📊 WildGuard Project Overview")

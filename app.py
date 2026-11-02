@@ -60,6 +60,7 @@ if filters.get("refresh_clicked"):
         st.write("Checking open data endpoints and validating thresholds...")
         res = run_full_pipeline(force_refresh=True)
         status.update(label="Data refresh complete!", state="complete", expanded=False)
+    st.cache_data.clear()
     st.rerun()
 
 # Check if data exists; if completely empty, run automatic first-time fetch
@@ -68,6 +69,7 @@ if sightings_gdf.empty or screening_gdf.empty:
     with st.status("Running initial WildGuard data pipeline...", expanded=True) as status:
         res = run_full_pipeline(force_refresh=False)
         status.update(label="Initial setup complete!", state="complete", expanded=False)
+    st.cache_data.clear()
     st.rerun()
 
 # Main Header

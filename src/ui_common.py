@@ -217,6 +217,22 @@ def apply_custom_css():
         h4, h5, h6 {
             color: #e2e8f0 !important;
         }
+
+        /* Bordered containers */
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+            border-radius: 10px !important;
+        }
+
+        /* Multiselect tag items & Pills */
+        div[data-baseweb="tag"] {
+            background-color: #334155 !important;
+        }
+        div[data-baseweb="tag"] span {
+            color: #f8fafc !important;
+            font-weight: 600 !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,

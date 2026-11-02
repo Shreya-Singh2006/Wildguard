@@ -6,7 +6,6 @@ secondaryBackgroundColor = "#1e293b"
 textColor = "#f8fafc"
 borderColor = "#334155"
 font = "sans serif"
-baseBorderRadius = "10px"
 showWidgetBorder = true
 
 [theme.sidebar]

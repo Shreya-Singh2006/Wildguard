@@ -19,13 +19,15 @@ from src.config import CACHE_MAX_AGE_DAYS, RAW_DATA_DIR
 logger = logging.getLogger(__name__)
 
 OVERPASS_ENDPOINTS = [
+    "https://overpass.kumi.systems/api/interpreter",
     "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://lz4.overpass-api.de/api/interpreter",
-    "https://z.overpass-api.de/api/interpreter",
 ]
 
 
-def _query_overpass(query: str, max_retries: int = 3, timeout: int = 35) -> Optional[Dict[str, Any]]:
+def _query_overpass(query: str, max_retries: int = 8, timeout: int = 200) -> Optional[Dict[str, Any]]:
     """Execute Overpass QL query across mirrors with retry and backoff."""
     for attempt in range(max_retries):
         endpoint = OVERPASS_ENDPOINTS[attempt % len(OVERPASS_ENDPOINTS)]
@@ -46,7 +48,7 @@ def _query_overpass(query: str, max_retries: int = 3, timeout: int = 35) -> Opti
                 logger.warning(f"Overpass HTTP {resp.status_code}: {resp.text[:100]}")
         except Exception as e:
             logger.warning(f"Error querying {endpoint}: {e}")
-        time.sleep(2 * (attempt + 1))
+        time.sleep(min(2 * (attempt + 1), 10))
     return None
 
 
@@ -86,13 +88,11 @@ def fetch_highways_osm(
 
     types_regex = "|".join(highway_types)
     query = f"""
-    [out:json][timeout:90];
+    [out:json][timeout:180];
     (
       way["highway"~"^({types_regex})$"]({s},{w},{n},{e});
     );
-    out body;
-    >;
-    out skel qt;
+    out geom;
     """
 
     data = _query_overpass(query)
@@ -111,8 +111,12 @@ def fetch_highways_osm(
 
     features = []
     for w in ways:
-        node_ids = w.get("nodes", [])
-        pts = [nodes[nid] for nid in node_ids if nid in nodes]
+        if w.get("geometry"):
+            # "out geom" response: coordinates are embedded in each way
+            pts = [(g["lon"], g["lat"]) for g in w["geometry"] if g]
+        else:
+            node_ids = w.get("nodes", [])
+            pts = [nodes[nid] for nid in node_ids if nid in nodes]
         if len(pts) >= 2:
             geom = LineString(pts)
             tags = w.get("tags", {})
