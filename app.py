@@ -185,10 +185,10 @@ tab_method, tab_arch = st.tabs([
 
 with tab_method:
     st.markdown(
-        """
+        r"""
         1. **Zero Data Fabrication:** Every single record originates directly from official open APIs (GBIF, OpenStreetMap Overpass, geoBoundaries, IMD).
         2. **Precautionary Species Privacy:** iNaturalist injects deliberate ~30 km obfuscation for 7 threatened species (*Tiger, Leopard, Gaur, Sambar, Sloth Bear, Dhole, Barasingha*). We never convert blurred centroids into false pinpoint coordinates; they are strictly aggregated into 0.25° cells.
-        3. **Robust Outlier Detection:** Rather than naive fatality counts, we employ the Modified Z-Score using Median and Median Absolute Deviation ($M_i = 0.6745 \\times (x_i - \\text{median}) / \\text{MAD} > 3.5$), falling back to the 90th percentile if MAD is 0.
+        3. **Robust Outlier Detection:** Rather than naive fatality counts, we employ the Modified Z-Score using Median and Median Absolute Deviation ($M_i = 0.6745 \times (x_i - \text{median}) / \text{MAD} > 3.5$), falling back to the 90th percentile if MAD is 0.
         4. **Temporal Holdout Validation:** Hotspot models are trained on past records ($\le 2015$) and evaluated on future unseen records ($> 2015$), benchmarking against density-only and random baselines.
         5. **Exposure vs. Mortality Distinction:** Screening identifies **predicted exposure to traffic**, NOT observed road mortalities, directing forest department survey budgets with scientific honesty.
         """
